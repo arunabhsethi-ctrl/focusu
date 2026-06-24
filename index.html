@@ -1525,6 +1525,7 @@ function renderDealsByBD(){
   selectDealsBD(keep);
 }
 function selectDealsBD(name){
+  if(name && name!=='__all' && name===activeDealsBD){ name='__all'; }
   activeDealsBD=(name==='__all'||!name)?null:name;
   const sel=document.getElementById('dealsBDSelect'); if(sel) sel.value=activeDealsBD||'__all';
   document.querySelectorAll('#dealsLegend .dl').forEach(function(d){d.classList.toggle('active',d.dataset.bd===activeDealsBD);});
@@ -1542,7 +1543,8 @@ function selectDealsBD(name){
   const outstanding=invRows.reduce(function(s,r){return s+r.pending;},0);
   const clientOS={}; invRows.forEach(function(r){var k=norm(r.client); if(k) clientOS[k]=(clientOS[k]||0)+r.pending;});
   const ptr=pendingForBD(activeDealsBD);
-  set('dealsBDTitle', activeDealsBD||'All BDs');
+  var _titleEl=document.getElementById('dealsBDTitle');
+  if(_titleEl){ _titleEl.innerHTML = activeDealsBD ? esc(activeDealsBD)+' <span onclick="selectDealsBD(\'__all\')" style="display:inline-block;margin-left:8px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;border:1px solid var(--accent);border-radius:20px;padding:2px 10px;vertical-align:middle">&times; Show all BDs</span>' : 'All BDs'; }
   set('dealsCount', '· '+deals.length+' deal'+(deals.length!==1?'s':'')+' · '+fmtS(totRev)+' booked');
   const osInv=invRows.filter(function(r){return r.pending>0;}).length;
   document.getElementById('dealsKPI').innerHTML=

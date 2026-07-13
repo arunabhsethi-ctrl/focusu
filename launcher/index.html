@@ -1,95 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>FocusU · Launcher</title>
 <style>
-  :root{--bg:#0d1117;--card:#161b22;--card2:#1c232c;--line:#232b35;--tx:#e6edf3;--mut:#8b949e;--acc:#2dd4a7;}
+  :root{
+    --bg:#0d1117;--card:#161b22;--card2:#1d242e;--line:#232b35;
+    --tx:#e6edf3;--mut:#8b949e;--acc:#2dd4a7;
+    --c-dash:#2dd4a7;--c-sheet:#58a6ff;--c-fin:#f7b955;--c-mis:#bc8cff;
+    --c-fei:#ff9d76;--c-bank:#79c0ff;--c-sal:#ff7eb6;--c-drive:#8ddb8c;
+  }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--tx);
-    font:15px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;padding:24px 18px 40px;}
-  .wrap{max-width:960px;margin:0 auto}
-  header{display:flex;align-items:center;gap:11px;margin-bottom:14px}
-  .logo{width:20px;height:20px;border-radius:7px;background:var(--acc);
-    display:flex;align-items:center;justify-content:center;font-weight:800;color:#06121a;font-size:15px}
-  h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
-  #q{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--line);
-    background:var(--card);color:var(--tx);font-size:15px;outline:none;margin-bottom:16px}
-  #q:focus{border-color:var(--acc)}
-  .row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
-  a.card{display:flex;align-items:center;justify-content:center;text-align:center;
-    min-height:50px;padding:12px;border-radius:11px;background:var(--card);
-    border:1px solid var(--line);text-decoration:none;color:var(--tx);
-    font-weight:600;font-size:14.5px;transition:.12s;cursor:pointer}
-  a.card:hover{background:var(--card2);border-color:var(--acc);transform:translateY(-1px)}
+    font:15px/1.4 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:28px 20px 48px;}
+  .wrap{max-width:1020px;margin:0 auto}
+  header{display:flex;align-items:center;gap:11px;margin-bottom:18px}
+  .logo{width:26px;height:26px;border-radius:8px;background:var(--acc);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#06121a;font-size:16px}
+  h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+  .clock{margin-left:auto;color:var(--mut);font-size:12.5px;font-variant-numeric:tabular-nums}
+  #q{width:100%;padding:12px 15px;border-radius:11px;border:1px solid var(--line);
+    background:var(--card);color:var(--tx);font-size:15px;outline:none;margin-bottom:22px}
+  #q:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(45,212,167,.12)}
+  section{margin-bottom:22px}
+  section.hide{display:none}
+  .sec-title{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;
+    letter-spacing:1.4px;text-transform:uppercase;color:var(--mut);margin:0 0 9px 2px}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+  a.card{display:flex;align-items:center;gap:10px;min-height:52px;padding:12px 14px;
+    border-radius:11px;background:var(--card);border:1px solid var(--line);
+    border-left:3px solid var(--sc,var(--line));
+    text-decoration:none;color:var(--tx);font-weight:600;font-size:14px;
+    transition:background .12s,border-color .12s,transform .12s;cursor:pointer}
+  a.card:hover,a.card.sel{background:var(--card2);border-color:var(--sc,var(--acc));transform:translateY(-1px)}
+  a.card.sel{box-shadow:0 0 0 2px var(--sc,var(--acc)) inset}
   a.card.hide{display:none}
-  .foot{color:var(--mut);font-size:11.5px;margin-top:20px}
-  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--acc);
-    color:#06121a;font-weight:600;font-size:13px;padding:8px 16px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none}
-  #toast.show{opacity:1}
+  .ic{width:30px;height:30px;border-radius:8px;flex:none;display:flex;align-items:center;
+    justify-content:center;font-size:15px;background:rgba(255,255,255,.05)}
+  .nm{flex:1;min-width:0}
+  .nm b{display:block;font-weight:600}
+  .nm span{display:block;font-weight:400;font-size:11.5px;color:var(--mut);margin-top:1px}
+  mark{background:none;color:var(--acc);font-weight:700}
+  .foot{color:var(--mut);font-size:11.5px;margin-top:26px;text-align:center}
+  kbd{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:10.5px}
+  .empty{color:var(--mut);text-align:center;padding:40px 0;display:none}
 </style>
-
+</head>
+<body>
 <div class="wrap">
-  <header><div class="logo">F</div><h1>FocusU Launcher</h1></header>
-  <input id="q" placeholder="Type to filter, Enter to open the first match" autofocus spellcheck="false">
+  <header>
+    <div class="logo">F</div><h1>FocusU Launcher</h1>
+    <div class="clock" id="clock"></div>
+  </header>
+  <input id="q" placeholder="Type to filter · Enter opens · ↑↓ to pick · Esc clears" autofocus spellcheck="false" autocomplete="off">
   <div id="board"></div>
-  <div class="foot">FocusU Engage India Pvt Ltd · one click opens · Esc clears filter</div>
+  <div class="empty" id="empty">No matches — press Esc to clear</div>
+  <div class="foot">FocusU Engage India Pvt Ltd · <kbd>Enter</kbd> open first/selected · <kbd>↑</kbd><kbd>↓</kbd> navigate · <kbd>Esc</kbd> clear</div>
 </div>
-<div id="toast"></div>
-
 <script>
-const ROWS=[
- [["Collections Dashboard","https://collectionsdashboard.vercel.app/"],
-  ["Payments Dashboard","https://payments-dashboard-focusu.vercel.app/"],
-  ["FEI Looker Studio","https://datastudio.google.com/reporting/c94c8c9c-daea-4699-9e99-f20666b4f502"]],
-
- [["Outstanding Update - NEW","https://docs.google.com/spreadsheets/d/1l_IWuWgAyYY1aN5FZ7IBYXF_nsX--yXJwXMpXkQnJmc/edit"],
-  ["Payments Sheet","https://docs.google.com/spreadsheets/d/1Ui6ozNOt0G9RSutQXWISZwsUJeyME15CxPVrphNMA2Y/edit"],
-  ["Program Code Tracker","https://docs.google.com/spreadsheets/d/1eZe7cU-f1sISe3RNTVzuQ6VCHmphC8heIQxLSjyRhjM/edit"]],
-
- [["Zoho Expense","https://expense.zoho.com/app/645112792#/admin/dashboard"],
-  ["Zoho Books","https://books.zoho.com/app/645112792#/invoices/new"],
-  ["HubSpot","https://app-na2.hubspot.com/contacts/4264766/objects/0-3/views/348149167/list"]],
-
- [["Master Analytics 26-27","https://docs.google.com/spreadsheets/d/16SEhzmdYJbSofNBnZ5IxQ89nv54Gq2SOQr1D4ukt_o4/edit"],
-  ["MIS Dashboard","https://mis26-27dashboard.vercel.app/"],
-  ["MIS 26-27","https://docs.google.com/spreadsheets/d/1VQVw9OjzDmImz6FTxIWO1Cxa1S_7fQCbSB9FKEsCdEQ/edit"],
-  ["MIS 25-26","https://docs.google.com/spreadsheets/d/1ZrnS8TnOx2RMquePF5Np36QCxYz5VCJO-YW5mw2rU44/edit"]],
-
- [["FEI 26-27","https://docs.google.com/spreadsheets/d/16SEhzmdYJbSofNBnZ5IxQ89nv54Gq2SOQr1D4ukt_o4/edit?gid=1390064007#gid=1390064007"],
-  ["FEI 25-26","https://docs.google.com/spreadsheets/d/16SEhzmdYJbSofNBnZ5IxQ89nv54Gq2SOQr1D4ukt_o4/edit?gid=1390064007#gid=1390064007"],
-  ["FEI 24-25","https://docs.google.com/spreadsheets/d/1l_IWuWgAyYY1aN5FZ7IBYXF_nsX--yXJwXMpXkQnJmc/edit?gid=245015353#gid=245015353"]],
-
- [["Bank statement 26-27","https://docs.google.com/spreadsheets/d/1l_IWuWgAyYY1aN5FZ7IBYXF_nsX--yXJwXMpXkQnJmc/edit?gid=2099557050#gid=2099557050"],
-  ["Bank statement 25-26","https://docs.google.com/spreadsheets/d/1l_IWuWgAyYY1aN5FZ7IBYXF_nsX--yXJwXMpXkQnJmc/edit?gid=1485048900#gid=1485048900"]],
-
- [["Salary Sheet 26-27","https://docs.google.com/spreadsheets/d/1dY-QdhYOGmV5LuG9ypr4NVAAlJLdS4klgRLIrDz0X9c/edit?usp=sharing"],
-  ["Salary Sheet 25-26","https://docs.google.com/spreadsheets/d/1LvgvEXRg__OfvtVHY8iOrRql2WJFUoeXDaiHMLHCnSI/edit?usp=sharing"]],
-
- [["FocusU Drive","https://drive.google.com/drive/u/0/shared-drives?lfhs=2"],
-  ["FocusU Docs","https://drive.google.com/drive/folders/1Zxlnn6kuRK0mDdbxEMcuiyKQok_G-SX3"]],
+const SECTIONS=[
+ {title:"Dashboards",color:"var(--c-dash)",icon:"📊",links:[
+   ["Collections Dashboard","https://collectionsdashboard.vercel.app/","live"],
+   ["Payments Dashboard","https://payments-dashboard-focusu.vercel.app/","live"],
+   ["MIS Dashboard","https://mis26-27dashboard.vercel.app/","live"],
+   ["FEI Looker Studio","https://datastudio.google.com/reporting/c94c8c9c-daea-4699-9e99-f20666b4f502","Looker Studio"],
+ ]},
+ {title:"Working Sheets",color:"var(--c-sheet)",icon:"📋",links:[
+   ["Outstanding Update — NEW","https://docs.google.com/spreadsheets/d/1l_IWuWgAyYY1aN5FZ7IBYXF_nsX--yXJwXMpXkQnJmc/edit","sheet"],
+   ["Payments Sheet","https://docs.google.com/spreadsheets/d/1Ui6ozNOt0G9RSutQXWISZwsUJeyME15CxPVrphNMA2Y/edit","sheet"],
+   ["Program Code Tracker","https://docs.google.com/spreadsheets/d/1eZe7cU-f1sISe3RNTVzuQ6VCHmphC8heIQxLSjyRhjM/edit","sheet"],
+ ]},
+ {title:"Finance Apps",color:"var(--c-fin)",icon:"💳",links:[
+   ["Zoho Expense","https://expense.zoho.com/app/645112792#/admin/dashboard","admin"],
+   ["Zoho Books","https://books.zoho.com/app/645112792#/invoices/new","new invoice"],
+   ["HubSpot","https://app-na2.hubspot.com/contacts/4264766/objects/0-3/views/348149167/list","deals"],
+ ]},
+ {title:"MIS & Analytics",color:"var(--c-mis)",icon:"📈",links:[
+   ["Master Analytics 26-27","https://docs.google.com/spreadsheets/d/16SEhzmdYJbSofNBnZ5IxQ89nv54Gq2SOQr1D4ukt_o4/edit","sheet"],
+   ["MIS 26-27","https://docs.google.com/spreadsheets/d/1VQVw9OjzDmImz6FTxIWO1Cxa1S_7fQCbSB9FKEsCdEQ/edit","sheet"],
+   ["MIS 25-26","https://docs.google.com/spreadsheets/d/1ZrnS8TnOx2RMquePF5Np36QCxYz5VCJO-YW5mw2rU44/edit","sheet"],
+ ]},
+ {title:"FEI",color:"var(--c-fei)",icon:"🧾",links:[
+   ["FEI 26-27","https://docs.google.com/spreadsheets/d/16SEhzmdYJbSofNBnZ5IxQ89nv54Gq2SOQr1D4ukt_o4/edit?gid=1390064007#gid=1390064007","tab"],
+   ["FEI 25-26","https://docs.google.com/spreadsheets/d/16SEhzmdYJbSofNBnZ5IxQ89nv54Gq2SOQr1D4ukt_o4/edit?gid=1390064007#gid=1390064007","⚠ same link as 26-27"],
+   ["FEI 24-25","https://docs.google.com/spreadsheets/d/1l_IWuWgAyYY1aN5FZ7IBYXF_nsX--yXJwXMpXkQnJmc/edit?gid=245015353#gid=245015353","tab"],
+ ]},
+ {title:"Bank Statements",color:"var(--c-bank)",icon:"🏦",links:[
+   ["Bank Statement 26-27","https://docs.google.com/spreadsheets/d/1l_IWuWgAyYY1aN5FZ7IBYXF_nsX--yXJwXMpXkQnJmc/edit?gid=2099557050#gid=2099557050","tab"],
+   ["Bank Statement 25-26","https://docs.google.com/spreadsheets/d/1l_IWuWgAyYY1aN5FZ7IBYXF_nsX--yXJwXMpXkQnJmc/edit?gid=1485048900#gid=1485048900","tab"],
+ ]},
+ {title:"Salary",color:"var(--c-sal)",icon:"👥",links:[
+   ["Salary Sheet 26-27","https://docs.google.com/spreadsheets/d/1dY-QdhYOGmV5LuG9ypr4NVAAlJLdS4klgRLIrDz0X9c/edit?usp=sharing","sheet"],
+   ["Salary Sheet 25-26","https://docs.google.com/spreadsheets/d/1LvgvEXRg__OfvtVHY8iOrRql2WJFUoeXDaiHMLHCnSI/edit?usp=sharing","sheet"],
+ ]},
+ {title:"Drive & Docs",color:"var(--c-drive)",icon:"📁",links:[
+   ["FocusU Drive","https://drive.google.com/drive/u/0/shared-drives?lfhs=2","shared drives"],
+   ["FocusU Docs","https://drive.google.com/drive/folders/1Zxlnn6kuRK0mDdbxEMcuiyKQok_G-SX3","folder"],
+ ]},
 ];
 
-const board=document.getElementById('board');
-ROWS.forEach(r=>{
-  const d=document.createElement('div'); d.className='row';
-  r.forEach(([nm,url])=>{
-    const a=document.createElement('a'); a.className='card'; a.textContent=nm;
-    a.href=url; a.target='_blank'; a.rel='noopener'; a.dataset.s=nm.toLowerCase();
-    d.appendChild(a);
+const board=document.getElementById('board'),empty=document.getElementById('empty');
+SECTIONS.forEach(sec=>{
+  const s=document.createElement('section');
+  s.innerHTML=`<h2 class="sec-title"><span class="dot" style="background:${sec.color}"></span>${sec.title}</h2>`;
+  const g=document.createElement('div');g.className='grid';
+  sec.links.forEach(([nm,url,sub])=>{
+    const a=document.createElement('a');a.className='card';a.href=url;
+    a.target='_blank';a.rel='noopener';
+    a.style.setProperty('--sc',sec.color);
+    a.dataset.s=(nm+' '+sec.title).toLowerCase();a.dataset.nm=nm;
+    a.innerHTML=`<span class="ic">${sec.icon}</span><span class="nm"><b>${nm}</b>${sub?`<span>${sub}</span>`:''}</span>`;
+    g.appendChild(a);
   });
-  board.appendChild(d);
+  s.appendChild(g);board.appendChild(s);
 });
 
 const q=document.getElementById('q');
+let sel=-1;
+const visible=()=>[...document.querySelectorAll('a.card')].filter(c=>!c.classList.contains('hide'));
+
+function highlight(card,v){
+  const nm=card.dataset.nm, b=card.querySelector('b');
+  if(!v){b.textContent=nm;return;}
+  const i=nm.toLowerCase().indexOf(v);
+  b.innerHTML = i<0 ? nm : nm.slice(0,i)+'<mark>'+nm.slice(i,i+v.length)+'</mark>'+nm.slice(i+v.length);
+}
+function updateSel(){
+  visible().forEach((c,i)=>c.classList.toggle('sel',i===sel));
+}
 q.addEventListener('input',()=>{
-  const v=q.value.trim().toLowerCase();
-  document.querySelectorAll('a.card').forEach(c=>c.classList.toggle('hide', v && !c.dataset.s.includes(v)));
-  document.querySelectorAll('.row').forEach(r=>{
-    r.style.display=[...r.querySelectorAll('a.card')].some(c=>!c.classList.contains('hide'))?'':'none';
+  const v=q.value.trim().toLowerCase();sel=-1;
+  document.querySelectorAll('a.card').forEach(c=>{
+    const hit=!v||c.dataset.s.includes(v);
+    c.classList.toggle('hide',!hit);highlight(c,hit?v:'');
   });
+  let any=false;
+  document.querySelectorAll('section').forEach(s=>{
+    const show=[...s.querySelectorAll('a.card')].some(c=>!c.classList.contains('hide'));
+    s.classList.toggle('hide',!show);if(show)any=true;
+  });
+  empty.style.display=any?'none':'block';
+  updateSel();
 });
 q.addEventListener('keydown',e=>{
-  if(e.key==='Enter'){const f=[...document.querySelectorAll('a.card')].find(c=>!c.classList.contains('hide')); if(f) f.click();}
-  if(e.key==='Escape'){q.value='';q.dispatchEvent(new Event('input'));}
+  const vis=visible();
+  if(e.key==='ArrowDown'){e.preventDefault();sel=Math.min(sel+1,vis.length-1);updateSel();vis[sel]?.scrollIntoView({block:'nearest'});}
+  else if(e.key==='ArrowUp'){e.preventDefault();sel=Math.max(sel-1,-1);updateSel();}
+  else if(e.key==='Enter'){(vis[sel]||vis[0])?.click();}
+  else if(e.key==='Escape'){q.value='';sel=-1;q.dispatchEvent(new Event('input'));}
 });
+document.addEventListener('keydown',e=>{
+  if(e.target!==q && e.key.length===1 && !e.metaKey && !e.ctrlKey){q.focus();}
+});
+
+const clock=document.getElementById('clock');
+function tick(){clock.textContent=new Date().toLocaleString('en-IN',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
+tick();setInterval(tick,30000);
 </script>
+</body>
+</html>

@@ -76,6 +76,20 @@ main{padding:0 16px 120px;max-width:1800px;margin:0 auto}
 .qv-amt{font-size:22px;font-weight:800;line-height:1;margin-bottom:3px}
 .qv-sub{font-size:11px;color:var(--muted)}
 
+/* ── PROBABILITY SECTION ── */
+.prob-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.prob-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:border-color .15s;position:relative;overflow:hidden}
+.prob-card:hover{border-color:var(--accent)}
+.prob-card.active{border-color:var(--accent);background:rgba(240,165,0,.06)}
+.prob-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--border)}
+.prob-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;flex:0 0 auto}
+.prob-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;white-space:nowrap}
+.prob-amt{font-size:18px;font-weight:800;line-height:1;margin-bottom:2px}
+.prob-sub{font-size:11px;color:var(--muted)}
+.prob-total{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-top:8px;padding:9px 14px;background:var(--surf2);border:1px solid var(--border);border-radius:var(--r);font-size:12px;color:var(--muted)}
+.prob-total strong{color:var(--accent);font-size:13px}
+@media(max-width:680px){.prob-grid{grid-template-columns:1fr 1fr}}
+
 /* ── FILTERS ── */
 .filters{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px}
 .fg{display:flex;flex-direction:column;gap:3px;flex:1;min-width:110px}
@@ -352,6 +366,18 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--ac
     </div>
   </div>
 
+  <!-- Probability of payment by month end (colour-coded buckets, click to filter) -->
+  <div id="probSection" style="display:none;margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div class="sec-title" style="margin-bottom:0">Probability of payment by month end
+        <span id="probAsOf" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--muted)"></span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="clearProbFilter()" id="probClear" style="display:none">✕ Clear</button>
+    </div>
+    <div class="prob-grid" id="probGrid"></div>
+    <div class="prob-total" id="probTotal"></div>
+  </div>
+
   <!-- Filters -->
   <div class="filters">
     <div class="fg"><label>BD Name</label><select id="fBD" onchange="applyFilters()"><option value="">All BDs</option></select></div>
@@ -548,6 +574,7 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--ac
 const GAS_COLLECTIONS = 'https://script.google.com/macros/s/AKfycbzcH8-VmsyO5n5X-bOdB4HSJ5iEIBjml64PHP834umqRBIpRk-4Pi5DveWrcVrv_D0kQA/exec';
 const GAS_DEALS       = 'https://script.google.com/macros/s/AKfycbxltigPFUCV2Abql8B32EswEvbdKqtw6llCJwNFYYbMCvKaRLoscOdiFP1meOzZ6cIj/exec';
 const GAS_PENDING     = 'https://script.google.com/macros/s/AKfycbxYl1BNaMg98cjFw6b5iSYcypxmBug-blfd6bg6cD9rRnusc-hUVI2UEFSwDE7ikdIo/exec';
+const GAS_PROBABILITY = 'https://script.google.com/macros/s/AKfycbyXXryx7Y0qYNEa3hZFMURwst_poDcjaE4deWDDojs_7yjLX_t_kmEmNElORifAkqXByw/exec';
 
 /* ═══════════════════════════════════════════════════════
    STATE
@@ -565,6 +592,9 @@ let pg = 1, pgSize = 50;
 let activeBD = null;
 let activeCardFilter = null;   // 'all','ovd','nd','015','1530','3045','45p'
 let activeQVFilter   = null;   // 'overdue','thismonth','nextmonth'
+let probData = null;           // probability web app data {asOf,buckets,total,invoices}
+let probInvByNo = {};          // invNo -> bucket label
+let activeProbFilter = null;   // 'High','Medium','Low','Very Low'
 
 /* ═══════════════════════════════════════════════════════
    BOOT
@@ -613,6 +643,16 @@ async function loadAll() {
   try {
     const bust = '?nocache=' + Date.now();
     const opts = { cache: 'no-store' };
+    // Probability feed is additive — if it fails, the rest of the dashboard still works.
+    let probDataRaw = null;
+    try {
+      const probRes  = await fetch(GAS_PROBABILITY + bust, opts);
+      const probText = await probRes.text();
+      probDataRaw = JSON.parse(probText);
+    } catch(e) {
+      console.error('Probability feed failed (non-fatal):', e);
+    }
+
     const [colRes, dealsRes, pendRes] = await Promise.all([
       fetch(GAS_COLLECTIONS + bust, opts),
       fetch(GAS_DEALS       + bust, opts),
@@ -631,10 +671,12 @@ async function loadAll() {
     parseCollections(colData);
     parseDeals(dealsData);
     parsePending(pendData);
+    parseProbability(probDataRaw);
 
-    activeCardFilter = null; activeQVFilter = null;
+    activeCardFilter = null; activeQVFilter = null; activeProbFilter = null;
     populateBDFilter();
     applyFilters();
+    renderProbability();
     renderBDSummary();
     renderRevenue();
     renderDealsByBD();
@@ -801,6 +843,8 @@ function applyFilters() {
       if (activeQVFilter==='thismonth' && !(r.days>0 || (dueD>=now && dueD<=endThisMonth))) return false;
       if (activeQVFilter==='nextmonth' && !(r.days>0 || (dueD>=now && dueD<=endNextMonth))) return false;
     }
+    // Probability filter (payment by month end bucket)
+    if (activeProbFilter && probData && probInvByNo[r.inv] !== activeProbFilter) return false;
     return true;
   });
 
@@ -819,8 +863,8 @@ function clearFilters() {
   const fs=document.getElementById('fSearch'); if(fs) fs.value='';
   document.getElementById('fBD').value='';
   document.getElementById('fAging').value='';
-  activeCardFilter=null; activeQVFilter=null;
-  syncCardHighlights(); syncQVHighlights();
+  activeCardFilter=null; activeQVFilter=null; activeProbFilter=null;
+  syncCardHighlights(); syncQVHighlights(); syncProbHighlights();
   applyFilters();
 }
 
@@ -853,6 +897,63 @@ function syncQVHighlights() {
   ['overdue','thismonth','nextmonth'].forEach(k=>{
     document.getElementById('qv-'+k)?.classList.toggle('active', activeQVFilter===k);
   });
+}
+
+/* ═══════════════════════════════════════════════════════
+   PROBABILITY (payment by month end)
+═══════════════════════════════════════════════════════ */
+function parseProbability(data) {
+  probData = null;
+  probInvByNo = {};
+  if (!data || !Array.isArray(data.buckets) || !data.buckets.length || data.error) {
+    return;
+  }
+  probData = data;
+  (data.invoices || []).forEach(inv => {
+    if (inv && inv.invNo) probInvByNo[inv.invNo] = inv.bucket;
+  });
+}
+
+function renderProbability() {
+  const section = document.getElementById('probSection');
+  if (!probData) { if (section) section.style.display = 'none'; return; }
+  section.style.display = '';
+  set('probAsOf', '· as of ' + (probData.asOf || ''));
+  const grid = document.getElementById('probGrid');
+  grid.innerHTML = (probData.buckets || []).map(b => {
+    const active = activeProbFilter === b.label ? ' active' : '';
+    return `<div class="prob-card${active}" onclick="filterByProb('${esc(b.label)}')" data-prob="${esc(b.label)}">
+      <div class="prob-lbl" style="border-bottom-color:${esc(b.color)}"><span class="prob-dot" style="background:${esc(b.color)}"></span>${esc(b.label)}</div>
+      <div class="prob-amt" style="color:${esc(b.color)}">${fmtS(b.amount)}</div>
+      <div class="prob-sub">${b.count} invoice${b.count!==1?'s':''}</div>
+    </div>`;
+  }).join('');
+  const total = probData.total || {};
+  const totEl = document.getElementById('probTotal');
+  totEl.innerHTML = `<span><strong>Total due by month end</strong> · ${total.count||0} invoices</span><span><strong>${fmtS(total.amount||0)}</strong></span>`;
+  syncProbHighlights();
+}
+
+function filterByProb(label) {
+  if (!probData) return;
+  if (activeProbFilter === label) { activeProbFilter = null; }
+  else { activeProbFilter = label; activeCardFilter = null; activeQVFilter = null; syncCardHighlights(); syncQVHighlights(); }
+  syncProbHighlights();
+  applyFilters();
+}
+
+function clearProbFilter() {
+  activeProbFilter = null;
+  syncProbHighlights();
+  applyFilters();
+}
+
+function syncProbHighlights() {
+  document.querySelectorAll('.prob-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.prob === activeProbFilter);
+  });
+  const clr = document.getElementById('probClear');
+  if (clr) clr.style.display = activeProbFilter ? 'inline-flex' : 'none';
 }
 
 /* ═══════════════════════════════════════════════════════

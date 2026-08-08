@@ -23,6 +23,15 @@ header{position:sticky;top:0;z-index:200;background:rgba(13,17,23,.97);backdrop-
 .hdr-r{display:flex;align-items:center;gap:6px}
 #lastUpdated{font-size:11px;color:var(--muted)}
 
+/* ── LOADING INDICATOR ── */
+#loadingBar{display:none;align-items:center;gap:6px;font-size:11px;color:var(--accent);font-weight:600;white-space:nowrap}
+#loadingBar.on{display:inline-flex}
+.spinner{width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex:0 0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+#refreshBtn.loading{background:var(--accent);color:#000;border-color:var(--accent);cursor:wait}
+#refreshBtn.error{background:var(--red);color:#fff;border-color:var(--red);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(224,92,92,.5)}50%{box-shadow:0 0 0 6px rgba(224,92,92,0)}}
+
 /* ── BUTTONS ── */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:7px;border:none;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
 .btn-red{background:var(--red);color:#fff}.btn-red:hover{filter:brightness(1.12)}
@@ -230,6 +239,7 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--ac
 
 /* ── TOAST ── */
 #toast{position:fixed;top:60px;right:16px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:9px 14px;font-size:13px;z-index:300;display:none;box-shadow:0 4px 20px rgba(0,0,0,.5);max-width:300px}
+#toast.error{border-color:var(--red);background:rgba(30,12,12,.97)}
 
 .empty{text-align:center;padding:28px;color:var(--muted);font-size:13px}
 
@@ -309,6 +319,7 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--ac
   <div class="logo">FocusU <span>Finance</span></div>
   <div class="hdr-r">
     <span id="lastUpdated"></span>
+    <span id="loadingBar"><span class="spinner"></span>Refreshing data…</span>
     <button class="btn btn-ghost" onclick="toggleSearch()" title="Search">🔍</button>
     <button class="btn btn-ghost" id="refreshBtn" onclick="loadAll()">🔄 Refresh</button>
     <button class="btn btn-red" id="batchBtn" style="display:none" onclick="batchEmail()">📨 Follow-ups</button>
@@ -637,9 +648,20 @@ function showTab(name) {
 /* ═══════════════════════════════════════════════════════
    LOAD ALL DATA
 ═══════════════════════════════════════════════════════ */
+function setLoading(on){
+  const bar=document.getElementById('loadingBar');
+  const btn=document.getElementById('refreshBtn');
+  if(bar) bar.classList.toggle('on', !!on);
+  if(btn){
+    btn.classList.toggle('loading', !!on);
+    if(!on) btn.classList.remove('error');
+    btn.disabled = !!on;
+    btn.innerHTML = on ? '<span class="spinner"></span> Refreshing…' : '🔄 Refresh';
+  }
+}
 async function loadAll() {
-  showToast('⏳ Loading data…');
-  document.getElementById('refreshBtn').disabled = true;
+  setLoading(true);
+  hideToast();
   try {
     const bust = '?nocache=' + Date.now();
     const opts = { cache: 'no-store' };
@@ -685,12 +707,24 @@ async function loadAll() {
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN');
     showToast(`✅ ${allRows.length} invoices · ${dealsRows.length} deals · ${pendingRows.length} pending`);
   } catch(e) {
-    showToast('❌ ' + e.message, 6000);
+    showToast('❌ Refresh failed: ' + e.message + ' — press ↻ Refresh to try again', 0, true);
+    const btn=document.getElementById('refreshBtn');
+    if(btn) btn.classList.add('error');
     console.error('loadAll error:', e);
   } finally {
-    document.getElementById('refreshBtn').disabled = false;
+    setLoading(false);
   }
 }
+
+function showToast(msg,dur=2500,isError=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.toggle('error', !!isError);
+  t.style.display='block';
+  clearTimeout(_tt);
+  if(dur>0) _tt=setTimeout(()=>t.style.display='none',dur);
+}
+function hideToast(){const t=document.getElementById('toast');if(t){t.style.display='none';t.classList.remove('error');clearTimeout(_tt);}}
 
 /* ═══════════════════════════════════════════════════════
    DATE CLEANER
@@ -1705,7 +1739,15 @@ const fmtS = n=>{if(n==null||isNaN(n))return'—';if(Math.abs(n)>=1e7)return'₹
 const esc  = s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const set  = (id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
 let _tt;
-function showToast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(_tt);_tt=setTimeout(()=>t.style.display='none',dur);}
+function showToast(msg,dur=2500,isError=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.toggle('error', !!isError);
+  t.style.display='block';
+  clearTimeout(_tt);
+  if(dur>0) _tt=setTimeout(()=>t.style.display='none',dur);
+}
+function hideToast(){const t=document.getElementById('toast');if(t){t.style.display='none';t.classList.remove('error');clearTimeout(_tt);}}
 </script>
 </body>
 </html>

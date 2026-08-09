@@ -334,7 +334,8 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--ac
 <!-- ══ STICKY SUMMARY BAR ══ -->
 <div id="summaryBar">
   <div class="cards-row">
-    <div class="s-card sc10" id="sc-rev"><div class="card-lbl">Revenue FY 26-27</div><div class="card-val" id="cRev">—</div><div class="card-sub" id="cRevS"></div></div>
+    <div class="s-card sc4" id="sc-new-clients"><div class="card-lbl">New Clients</div><div class="card-val" id="cNewClients">—</div><div class="card-sub" id="cNewClientsS"></div></div>
+    <div class="s-card sc10" id="sc-ex-clients"><div class="card-lbl">Existing Clients</div><div class="card-val" id="cExClients">—</div><div class="card-sub" id="cExClientsS"></div></div>
     <div class="s-card sc1" onclick="filterByCard('all')" id="sc-all"><div class="card-lbl">Outstanding</div><div class="card-val" id="cOut">—</div><div class="card-sub" id="cOutS"></div><div class="card-pct" id="cOutPct"></div></div>
     <div class="s-card sc2" onclick="filterByCard('ovd')" id="sc-ovd"><div class="card-lbl">Overdue</div><div class="card-val" id="cOvd">—</div><div class="card-sub" id="cOvdS"></div></div>
     <div class="s-card sc5" onclick="filterByCard('nd')"   id="sc-nd"  ><div class="card-lbl">Not Due</div><div class="card-val" id="cND">—</div><div class="card-sub" id="cNDS"></div></div>
@@ -665,7 +666,6 @@ async function loadAll() {
   try {
     const bust = '?nocache=' + Date.now();
     const opts = { cache: 'no-store' };
-    // Probability feed is additive — if it fails, the rest of the dashboard still works.
     let probDataRaw = null;
     try {
       const probRes  = await fetch(GAS_PROBABILITY + bust, opts);
@@ -703,7 +703,7 @@ async function loadAll() {
     renderRevenue();
     renderDealsByBD();
     renderPendingTable();
-    updateCards(); // refresh revenue card after deals parsed
+    updateCards();
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN');
     showToast(`✅ ${allRows.length} invoices · ${dealsRows.length} deals · ${pendingRows.length} pending`);
   } catch(e) {
@@ -754,23 +754,15 @@ const pn = v => { const n=parseFloat(String(v||'').replace(/[₹,\s]/g,'')); ret
    PARSE COLLECTIONS
 ═══════════════════════════════════════════════════════ */
 function parseCollections(data) {
-  // Handle all possible response shapes:
-  // {collections:[[]], bdEmails:[[]]}  — original multi-sheet format
-  // {data:[[]], bdEmails:[[]]}         — alternate key
-  // [[row1],[row2],...]                — bare array (data only, no BD emails)
   const dataRows = data.collections || data.data || (Array.isArray(data) ? data : []);
   const bdRows   = data.bdEmails    || data.bd   || [];
 
-  // BD emails
   bdEmails = {};
   (Array.isArray(bdRows) ? bdRows : []).slice(1).forEach(r => {
     if (r[0] && r[1] && String(r[1]).includes('@'))
       bdEmails[String(r[0]).trim()] = String(r[1]).trim();
   });
 
-  // Data rows — cols: 0=client,1=bd,2=workshop,3=inv,4=code,5=amt,
-  //             6=invDate,7=credit,8=due,9=cr,10=rcv,11=tds,
-  //             12=pending,13=adjDue,14=days,15=aging
   allRows = (Array.isArray(dataRows) ? dataRows : []).slice(1).map((r, i) => {
     const client = String(r[0] || '').trim();
     const inv    = String(r[3] || '').trim();
@@ -814,7 +806,6 @@ function parseDeals(data) {
    PARSE PENDING INVOICES
 ═══════════════════════════════════════════════════════ */
 function parsePending(data) {
-  // Handle various response shapes
   let rows = data;
   if (Array.isArray(data.data))    rows = data.data;
   else if (Array.isArray(data.pending)) rows = data.pending;
@@ -823,7 +814,6 @@ function parsePending(data) {
   pendingHeaders = rows[0].map(h=>String(h||'').trim()).filter(Boolean).slice(0,7);
   pendingRows    = rows.slice(1).filter(r=>Array.isArray(r)&&r.some(c=>c!==''&&c!=null))
     .map(r=>r.slice(0,7).map(cell=>{
-      // Clean date cells — GAS serialises dates as Date objects → strings
       const s = String(cell||'');
       if (s.match(/Date\(/) || s.match(/^\d{4}-\d{2}-\d{2}/) || s.match(/\d{1,2}\/\d{1,2}\/\d{4}/)) return cleanDate(cell);
       return s;
@@ -859,7 +849,6 @@ function applyFilters() {
       if (ag==='30-45' && (d<=30||d>45)) return false;
       if (ag==='45+'   && d<=45)         return false;
     }
-    // Card filter (top bar)
     if (activeCardFilter && activeCardFilter!=='all') {
       const d=r.days;
       if (activeCardFilter==='ovd'  && d<=0)           return false;
@@ -869,7 +858,6 @@ function applyFilters() {
       if (activeCardFilter==='3045' && (d<=30||d>45))  return false;
       if (activeCardFilter==='45p'  && d<=45)          return false;
     }
-    // QV filter
     if (activeQVFilter) {
       const dueTs = parseDate(r.due);
       const dueD  = new Date(dueTs); dueD.setHours(0,0,0,0);
@@ -877,12 +865,10 @@ function applyFilters() {
       if (activeQVFilter==='thismonth' && !(r.days>0 || (dueD>=now && dueD<=endThisMonth))) return false;
       if (activeQVFilter==='nextmonth' && !(r.days>0 || (dueD>=now && dueD<=endNextMonth))) return false;
     }
-    // Probability filter (payment by month end bucket)
     if (activeProbFilter && probData && probInvByNo[r.inv] !== activeProbFilter) return false;
     return true;
   });
 
-  // Sort
   filtered.sort((a,b)=>{
     let va=a[sortK], vb=b[sortK];
     if (['due','workshop','invDate'].includes(sortK)) { va=parseDate(va); vb=parseDate(vb); }
@@ -1065,7 +1051,6 @@ function renderMobileCards(){
   }).join('');
 }
 
-// Single tap = toggle selection, double-tap = clear all
 let _dblTapTimer=null;
 function mCardTap(id,el){
   if(_dblTapTimer){
@@ -1125,18 +1110,28 @@ function updateCards(){
   set('c3045',fmtS(sum(b3045)));set('c3045S',b3045.length+' inv');
   set('c45p',fmtS(sum(b45p))); set('c45pS',b45p.length+' inv');
   set('cSel',fmtS(selAmt));   set('cSelS',sel.length+' inv');
-  // Revenue card — FY 26-27
+  // Client count cards — New vs Existing per FY
   if(dealsRows.length){
+    const fy2526Start=new Date(2025,3,1),fy2526End=new Date(2026,2,31,23,59,59);
     const fy2627Start=new Date(2026,3,1),fy2627End=new Date(2027,2,31,23,59,59);
-    const fy26=dealsRows.filter(r=>{const d=new Date(parseDate(r.date));return d>=fy2627Start&&d<=fy2627End;});
-    const rev26=fy26.reduce((s,r)=>s+r.revenue,0);
-    set('cRev',fmtS(rev26)); set('cRevS',fy26.length+' programs');
+    const inFY = (r,start,end) => {const d=new Date(parseDate(r.date));return d>=start&&d<=end;};
+    const fy2526 = dealsRows.filter(r=>inFY(r,fy2526Start,fy2526End));
+    const fy2627 = dealsRows.filter(r=>inFY(r,fy2627Start,fy2627End));
+    const isNew = r => r.type && r.type.toLowerCase().includes('new');
+    const new2526 = fy2526.filter(isNew), ex2526 = fy2526.filter(r=>!isNew(r));
+    const new2627 = fy2627.filter(isNew), ex2627 = fy2627.filter(r=>!isNew(r));
+    const uniq = rows => new Set(rows.map(r=>norm(r.client)).filter(Boolean)).size;
+    const nNew2526 = uniq(new2526), nEx2526 = uniq(ex2526);
+    const nNew2627 = uniq(new2627), nEx2627 = uniq(ex2627);
+    set('cNewClients', nNew2526+' → '+nNew2627);
+    set('cNewClientsS', 'workshops '+new2526.length+' → '+new2627.length);
+    set('cExClients', nEx2526+' → '+nEx2627);
+    set('cExClientsS', 'workshops '+ex2526.length+' → '+ex2627.length);
   }
   set('sCount',sel.length); set('sAmt',fmtS(selAmt));
   document.getElementById('selBar').classList.toggle('on',sel.length>0);
   document.getElementById('batchBtn').style.display=sel.length>0?'inline-flex':'none';
 
-  // QV cards
   const now = new Date(); now.setHours(0,0,0,0);
   const endThisMonth = new Date(now.getFullYear(),now.getMonth()+1,0);
   const endNextMonth = new Date(now.getFullYear(),now.getMonth()+2,0);
@@ -1261,9 +1256,6 @@ function renderRevenue(){
 
   const sum  = arr => arr.reduce((s,r)=>s+r.revenue,0);
 
-  // FY helpers — FY starts April 1
-  // FY25-26: Apr 1 2025 → Mar 31 2026
-  // FY26-27: Apr 1 2026 → Mar 31 2027
   const fy2526Start = new Date(2025,3,1), fy2526End = new Date(2026,2,31,23,59,59);
   const fy2627Start = new Date(2026,3,1), fy2627End = new Date(2027,2,31,23,59,59);
 
@@ -1271,32 +1263,25 @@ function renderRevenue(){
   const fy2526 = dealsRows.filter(r=>inFY(r,fy2526Start,fy2526End));
   const fy2627 = dealsRows.filter(r=>inFY(r,fy2627Start,fy2627End));
 
-  // New vs existing per FY
   const isNew = r => r.type && r.type.toLowerCase().includes('new');
   const new2526 = fy2526.filter(isNew), ex2526 = fy2526.filter(r=>!isNew(r));
   const new2627 = fy2627.filter(isNew), ex2627 = fy2627.filter(r=>!isNew(r));
 
-  // Unique client counts per FY (dedupe by normalized client name — norm() is
-  // the same matcher used for Client O/S elsewhere on the dashboard).
   const uniqClients = rows => new Set(rows.map(r=>norm(r.client)).filter(Boolean)).size;
   const uniqNew2526 = uniqClients(new2526), uniqEx2526 = uniqClients(ex2526);
   const uniqNew2627 = uniqClients(new2627), uniqEx2627 = uniqClients(ex2627);
 
-  // Current month
   const now = new Date();
   const thisM  = dealsRows.filter(r=>{ const d=new Date(parseDate(r.date));return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth(); });
   const lastMD = new Date(now.getFullYear(),now.getMonth()-1,1);
   const lastM  = dealsRows.filter(r=>{ const d=new Date(parseDate(r.date));return d.getFullYear()===lastMD.getFullYear()&&d.getMonth()===lastMD.getMonth(); });
   const momPct = sum(lastM)>0?Math.round((sum(thisM)-sum(lastM))/sum(lastM)*100):0;
 
-  // Avg deal
   const avgAll  = dealsRows.length ? sum(dealsRows)/dealsRows.length : 0;
   const avg2627 = fy2627.length    ? sum(fy2627)/fy2627.length : 0;
 
-  // KPI cards — hidden on screen but rendered (display:none on grid)
   document.getElementById('kpiGrid').style.display = 'none';
 
-  // ── SUMMARY ROW (compact, shown instead of cards) ──
   const summaryEl = document.getElementById('revSummaryRow');
   if(summaryEl) {
     const yoyPct = sum(fy2526)>0 ? Math.round((sum(fy2627)-sum(fy2526))/sum(fy2526)*100) : 0;
@@ -1326,63 +1311,31 @@ function renderRevenue(){
 
   const maxMonthly = Math.max(...monthData.flatMap(m=>[m.v2526,m.v2627]), 1);
 
-  // Nice round Y-axis max (ceiling to nearest 100k/50k/25k)
   const niceMax = (() => {
     const steps = [1000000,500000,250000,100000,50000,25000,10000];
     for (const s of steps) { const v = Math.ceil(maxMonthly/s)*s; if (v/s <= 8) return v; }
     return Math.ceil(maxMonthly/10000)*10000;
   })();
   const Y_TICKS = 5;
-  const CHART_H = 200; // px — bar drawing area height
-
-  // Build Y-axis tick values
+  const CHART_H = 200;
   const yTicks = Array.from({length:Y_TICKS+1}, (_,i)=> Math.round(niceMax/Y_TICKS*i));
   const fmtY   = v => v>=100000 ? (v/100000).toFixed(v%100000===0?0:1)+'L' : v>=1000 ? (v/1000).toFixed(0)+'K' : v;
 
-  // Chart wrapper: Y-axis on left + bar area
   const yAxisHtml = `
     <div style="display:flex;flex-direction:column-reverse;justify-content:space-between;height:${CHART_H}px;padding:0 6px 0 0;text-align:right;flex-shrink:0">
       ${yTicks.map(v=>`<div style="font-size:9px;color:var(--muted);line-height:1">${fmtY(v)}</div>`).join('')}
     </div>`;
 
-  // Gridlines + bars area
   const gridLinesHtml = yTicks.slice(1).map(v=>{
     const pct = (v/niceMax*100).toFixed(1);
     return `<div style="position:absolute;bottom:${pct}%;left:0;right:0;border-top:1px solid rgba(48,54,61,.5);pointer-events:none"></div>`;
-  }).join('');
-
-  const barsHtml = monthData.map(m=>{
-    const h25 = m.v2526 ? Math.max(Math.round(m.v2526/niceMax*CHART_H),4) : 0;
-    const h26 = m.v2627 ? Math.max(Math.round(m.v2627/niceMax*CHART_H),4) : 0;
-
-    // Count label inside bar — show if bar tall enough (>18px), else skip
-    const lbl25 = (m.c2526>0 && h25>=18)
-      ? `<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:8px;font-weight:700;color:rgba(255,255,255,.9);line-height:1">${m.c2526}</div>`
-      : '';
-    const lbl26 = (m.c2627>0 && h26>=18)
-      ? `<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:8px;font-weight:700;color:rgba(0,0,0,.8);line-height:1">${m.c2627}</div>`
-      : '';
-
-    return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:0;min-width:0">
-      <!-- bars -->
-      <div style="display:flex;align-items:flex-end;gap:2px;height:${CHART_H}px;width:100%;padding:0 2px">
-        <div style="flex:1;position:relative;background:#60a0ff;border-radius:3px 3px 0 0;height:${h25}px;transition:height .4s;opacity:.85"
-          title="FY25-26 ${m.label}: ${fmtS(m.v2526)} (${m.c2526} workshops)">${lbl25}</div>
-        <div style="flex:1;position:relative;background:var(--accent);border-radius:3px 3px 0 0;height:${h26}px;transition:height .4s;opacity:.95"
-          title="FY26-27 ${m.label}: ${fmtS(m.v2627)} (${m.c2627} workshops)">${lbl26}</div>
-      </div>
-      <!-- month label -->
-      <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:4px;white-space:nowrap">${m.label}</div>
-    </div>`;
   }).join('');
 
   document.getElementById('monthlyChart').innerHTML = `
     <div style="display:flex;align-items:flex-start;width:100%;gap:0">
       ${yAxisHtml}
       <div style="flex:1;position:relative;min-width:0">
-        <!-- grid lines -->
         <div style="position:absolute;inset:0 0 20px 0;pointer-events:none">${gridLinesHtml}</div>
-        <!-- bars row -->
         <div style="display:flex;align-items:flex-end;gap:1px;height:${CHART_H}px;width:100%">${
           monthData.map(m=>{
             const h25 = m.v2526 ? Math.max(Math.round(m.v2526/niceMax*CHART_H),4) : 0;
@@ -1406,14 +1359,10 @@ function renderRevenue(){
      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--accent);border-radius:2px;display:inline-block"></span>FY 26-27</span>
      <span style="font-size:10px;color:var(--muted)">Number inside bar = workshop count · Y-axis in ₹</span>`;
 
-  // ── OFFERING CHART: FY26-27 only ──
   const ofMap={};
   fy2627.forEach(r=>{ if(!r.offering)return; ofMap[r.offering]=(ofMap[r.offering]||0)+r.revenue; });
   renderBarChart('offeringChart', Object.entries(ofMap).sort((a,b)=>b[1]-a[1]), 'var(--blue)');
 
-  // ── BD REVENUE: side-by-side FY25-26 vs FY26-27.
-  // Only show BDs with at least one FY26-27 deal (former/deactivated BDs with
-  // only FY25-26 revenue are dropped so the chart stays focused on the current year).
   const allBDs = [...new Set(dealsRows.map(r=>r.bd).filter(Boolean))].sort();
   const bdRevEl = document.getElementById('bdRevenueChart');
   const bdsWithRevenue = allBDs.filter(bd=>{
@@ -1423,13 +1372,12 @@ function renderRevenue(){
   const bdMaxV = Math.max(...bdsWithRevenue.map(bd=>Math.max(
     sum(fy2526.filter(r=>r.bd===bd)), sum(fy2627.filter(r=>r.bd===bd))
   )), 1);
-  // Nice round Y-axis max for the BD chart (same helper as the monthly chart)
   const bdNiceMax = (() => {
     const steps = [1000000,500000,250000,100000,50000,25000,10000];
     for (const s of steps) { const v = Math.ceil(bdMaxV/s)*s; if (v/s <= 8) return v; }
     return Math.ceil(bdMaxV/10000)*10000;
   })();
-  const BD_CHART_H = 170; // px — bar drawing area height
+  const BD_CHART_H = 170;
   bdRevEl.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;align-items:end">
       ${bdsWithRevenue.map(bd=>{
@@ -1443,7 +1391,7 @@ function renderRevenue(){
             <div style="flex:1;position:relative;background:#60a0ff;border-radius:3px 3px 0 0;height:${h1}px;opacity:.85;min-width:8px" title="${esc(bd)} FY25-26: ${fmtS(v1)}">${lbl1}</div>
             <div style="flex:1;position:relative;background:var(--accent);border-radius:3px 3px 0 0;height:${h2}px;opacity:.95;min-width:8px" title="${esc(bd)} FY26-27: ${fmtS(v2)}">${lbl2}</div>
           </div>
-          <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:5px;width:100%;line-height:1.25;overflow-wrap:anywhere;word-break:break-word" title="${esc(bd)}">${esc(bd)}</div>
+          <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:5px;width:100%;height:22px;line-height:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(bd)}">${esc(bd)}</div>
         </div>`;
       }).join('')}
     </div>
@@ -1454,14 +1402,35 @@ function renderRevenue(){
     </div>`;
 
   // ── NEW vs EXISTING: FY25-26 and FY26-27 ──
-  renderBarChart('newExistingChart', [
-    ['New 25-26',      sum(new2526)],
-    ['Existing 25-26', sum(ex2526)],
-    ['New 26-27',      sum(new2627)],
-    ['Existing 26-27', sum(ex2627)],
-  ], 'var(--orange)');
+  const neRows = [
+    ['New 25-26',      sum(new2526), new2526.length, uniqNew2526],
+    ['Existing 25-26', sum(ex2526),  ex2526.length,  uniqEx2526],
+    ['New 26-27',      sum(new2627), new2627.length, uniqNew2627],
+    ['Existing 26-27', sum(ex2627),  ex2627.length,  uniqEx2627],
+  ];
+  const neMax = Math.max(...neRows.map(r=>r[1]), 1);
+  const neCwMax = Math.max(...neRows.map(r=>Math.max(r[2], r[3])), 1);
+  document.getElementById('newExistingChart').innerHTML = neRows.map((r,i)=>{
+    const pct = (r[1]/neMax*100).toFixed(1);
+    const cwPct = Math.max(Math.round(r[2]/neCwMax*100), 4);
+    const clPct = Math.max(Math.round(r[3]/neCwMax*100), 4);
+    const color = i < 2 ? '#60a0ff' : 'var(--accent)';
+    return `<div class="bar-row">
+      <div class="bar-lbl">${r[0]}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="bar-val" style="min-width:100px">${fmtS(r[1])}</div>
+    </div>
+    <div class="bar-row" style="margin-top:-4px;margin-bottom:2px;font-size:11px;color:var(--muted)">
+      <div class="bar-lbl" style="font-size:10px"></div>
+      <div style="flex:1;display:flex;gap:4px;align-items:center">
+        <div style="flex:1;height:14px;background:var(--surf2);border-radius:3px;overflow:hidden;position:relative">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:${clPct}%;background:var(--green);border-radius:3px;min-width:2px"></div>
+        </div>
+        <div style="min-width:100px;text-align:right;font-weight:600">${r[3]} clients · ${r[2]} workshops</div>
+      </div>
+    </div>`;
+  }).join('');
 
-  // ── TOP CLIENTS (FY26-27 primary, fallback all) ──
   const clientMap={};
   const srcRows = fy2627.length ? fy2627 : dealsRows;
   srcRows.forEach(r=>{
@@ -1484,7 +1453,6 @@ function renderRevenue(){
       <td><span class="badge ${s.type&&s.type.toLowerCase().includes('new')?'b-g':'b-y'}">${esc(s.type)||'—'}</span></td>
     </tr>`
   ).join('');
-  // Mobile cards for top clients
   const mob=document.getElementById('topClientsMobile');
   if(mob) mob.innerHTML=topClients.map(([name,s])=>
     `<div class="tc-card">
@@ -1532,11 +1500,9 @@ function renderPendingTable(){
     if (s.match(/^\d{4}-\d{2}-\d{2}/)) return cleanDate(s);
     return s;
   };
-  // Header with select-all checkbox
   document.getElementById('pendingHdr').innerHTML =
     `<th style="width:36px"><input type="checkbox" id="pendSelAll" onchange="togglePendAll(this)" style="accent-color:var(--accent)"/></th>` +
     pendingHeaders.map(h=>`<th>${esc(h)}</th>`).join('');
-  // Rows with checkboxes
   document.getElementById('pendingBody').innerHTML = pendingRows.map((r,i)=>
     `<tr style="${pendSelIds.has(i)?'background:rgba(240,165,0,.08)':''}">
       <td><input type="checkbox" ${pendSelIds.has(i)?'checked':''} onchange="togglePendRow(${i},this)" style="accent-color:var(--accent)"/></td>
@@ -1567,20 +1533,17 @@ function updateSelCardLabel(){
     set('cSelS', n > 0 ? 'in pending tab' : '');
   } else {
     lbl.textContent = 'Selected';
-    // restored by updateCards
   }
 }
 
 function updatePendSel(){
   const n   = pendSelIds.size;
-  // Try to find a numeric column to sum (look for col with ₹ or numbers)
   let amtColIdx = -1;
   if (pendingHeaders.length) {
     pendingHeaders.forEach((h,i)=>{
       const hl = h.toLowerCase();
       if (amtColIdx<0 && (hl.includes('rev') || hl.includes('amount') || hl.includes('value') || hl.includes('fee'))) amtColIdx=i;
     });
-    // fallback: find first col where >50% rows are numeric
     if (amtColIdx<0) {
       pendingHeaders.forEach((_,i)=>{
         if (amtColIdx>=0) return;
@@ -1603,13 +1566,9 @@ function updatePendSel(){
   if(cnt)  cnt.innerHTML = `<strong style="color:var(--accent);font-size:15px">${n} row${n>1?'s':''}</strong>`
     + (total>0 ? `<br><span style="font-size:13px;color:var(--text)">${fmtS(total)}</span>` : '');
 
-  // Update selected card if on pending tab
   if (activeTab==='pending') updateSelCardLabel();
 }
 
-/* ═══════════════════════════════════════════════════════
-   SEARCH
-═══════════════════════════════════════════════════════ */
 function toggleSearch(){
   const ov=document.getElementById('searchOverlay');
   const visible=ov.style.display==='block';
@@ -1621,7 +1580,6 @@ function closeSearch(){document.getElementById('searchOverlay').style.display='n
 /* ═══════════════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════════════ */
-/* ===== DEALS BY BD ===== */
 function dealsFYRange(){
   if(dealsFY==='2526') return {start:new Date(2025,3,1), end:new Date(2026,2,31,23,59,59)};
   if(dealsFY==='all')  return {start:new Date(2000,0,1), end:new Date(2100,0,1)};
@@ -1760,7 +1718,7 @@ function selectDealsBD(name){
 
 const fmt  = n=>(n==null||isNaN(n))?'—':'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:0});
 const fmtS = n=>{if(n==null||isNaN(n))return'—';if(Math.abs(n)>=1e7)return'₹'+(n/1e7).toFixed(2)+'Cr';if(Math.abs(n)>=1e5)return'₹'+(n/1e5).toFixed(2)+'L';return fmt(n);};
-const esc  = s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const esc  = s=>String(s||'').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"');
 const set  = (id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
 let _tt;
 function showToast(msg,dur=2500,isError=false){

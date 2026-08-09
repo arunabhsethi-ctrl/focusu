@@ -1308,7 +1308,8 @@ function renderRevenue(){
         <div style="width:1px;height:36px;background:var(--border);margin:0 4px"></div>
         <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:3px">This Month</div><div style="font-size:18px;font-weight:800">${fmtS(sum(thisM))}</div><div style="font-size:10px;color:${momPct>=0?'var(--green)':'var(--red)'}">${momPct>=0?'▲':'▼'} ${Math.abs(momPct)}% MoM</div></div>
         <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:3px">Avg Deal 26-27</div><div style="font-size:18px;font-weight:800">${fmtS(avg2627)}</div><div style="font-size:10px;color:var(--muted)">was ${fmtS(avgAll)} all-time</div></div>
-        <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:3px">New clients (25-26 → 26-27)</div><div style="font-size:14px;font-weight:700;color:var(--green)">${uniqNew2526} → ${uniqNew2627}</div><div style="font-size:10px;color:var(--muted)">workshops ${new2526.length} → ${new2627.length} · Existing clients ${uniqEx2526} → ${uniqEx2627} (workshops ${ex2526.length} → ${ex2627.length})</div></div>
+        <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:3px">New clients (25-26 → 26-27)</div><div style="font-size:14px;font-weight:700;color:var(--green)">${uniqNew2526} → ${uniqNew2627}</div><div style="font-size:10px;color:var(--muted)">workshops ${new2526.length} → ${new2627.length}</div></div>
+        <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:3px">Existing clients (25-26 → 26-27)</div><div style="font-size:14px;font-weight:700;color:var(--blue)">${uniqEx2526} → ${uniqEx2627}</div><div style="font-size:10px;color:var(--muted)">workshops ${ex2526.length} → ${ex2627.length}</div></div>
       </div>`;
   }
 

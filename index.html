@@ -1442,7 +1442,7 @@ function renderRevenue(){
             <div style="flex:1;position:relative;background:#60a0ff;border-radius:3px 3px 0 0;height:${h1}px;opacity:.85;min-width:8px" title="${esc(bd)} FY25-26: ${fmtS(v1)}">${lbl1}</div>
             <div style="flex:1;position:relative;background:var(--accent);border-radius:3px 3px 0 0;height:${h2}px;opacity:.95;min-width:8px" title="${esc(bd)} FY26-27: ${fmtS(v2)}">${lbl2}</div>
           </div>
-          <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:5px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(bd)}">${esc(bd)}</div>
+          <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:5px;width:100%;line-height:1.25;overflow-wrap:anywhere;word-break:break-word" title="${esc(bd)}">${esc(bd)}</div>
         </div>`;
       }).join('')}
     </div>

@@ -1410,12 +1410,14 @@ function renderRevenue(){
   fy2627.forEach(r=>{ if(!r.offering)return; ofMap[r.offering]=(ofMap[r.offering]||0)+r.revenue; });
   renderBarChart('offeringChart', Object.entries(ofMap).sort((a,b)=>b[1]-a[1]), 'var(--blue)');
 
-  // ── BD REVENUE: side-by-side FY25-26 vs FY26-27, skip BDs with no revenue ──
+  // ── BD REVENUE: side-by-side FY25-26 vs FY26-27.
+  // Only show BDs with at least one FY26-27 deal (former/deactivated BDs with
+  // only FY25-26 revenue are dropped so the chart stays focused on the current year).
   const allBDs = [...new Set(dealsRows.map(r=>r.bd).filter(Boolean))].sort();
   const bdRevEl = document.getElementById('bdRevenueChart');
   const bdsWithRevenue = allBDs.filter(bd=>{
-    const v1=sum(fy2526.filter(r=>r.bd===bd)), v2=sum(fy2627.filter(r=>r.bd===bd));
-    return v1>0||v2>0;
+    const v2=sum(fy2627.filter(r=>r.bd===bd));
+    return v2>0;
   }).sort((a,b)=>sum(fy2627.filter(r=>r.bd===b))-sum(fy2627.filter(r=>r.bd===a)));
   const bdMaxV = Math.max(...bdsWithRevenue.map(bd=>Math.max(
     sum(fy2526.filter(r=>r.bd===bd)), sum(fy2627.filter(r=>r.bd===bd))

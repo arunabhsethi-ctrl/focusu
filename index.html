@@ -1430,14 +1430,14 @@ function renderRevenue(){
   })();
   const BD_CHART_H = 170; // px — bar drawing area height
   bdRevEl.innerHTML = `
-    <div style="display:flex;flex-wrap:wrap;gap:4px">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;align-items:end">
       ${bdsWithRevenue.map(bd=>{
         const v1=sum(fy2526.filter(r=>r.bd===bd)), v2=sum(fy2627.filter(r=>r.bd===bd));
         const h1=v1?Math.max(Math.round(v1/bdNiceMax*BD_CHART_H),4):0;
         const h2=v2?Math.max(Math.round(v2/bdNiceMax*BD_CHART_H),4):0;
         const lbl1=(v1>0&&h1>=18)?`<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:8px;font-weight:700;color:rgba(255,255,255,.95);line-height:1">${fmtY(v1)}</div>`:'';
         const lbl2=(v2>0&&h2>=18)?`<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:8px;font-weight:700;color:rgba(20,20,20,.85);line-height:1">${fmtY(v2)}</div>`:'';
-        return `<div style="display:flex;flex-direction:column;align-items:center;flex:1 1 88px;min-width:64px;max-width:120px;padding:8px 5px 6px;background:var(--surf2);border-radius:6px">
+        return `<div style="display:flex;flex-direction:column;align-items:center;padding:8px 5px 6px;background:var(--surf2);border-radius:6px">
           <div style="display:flex;align-items:flex-end;gap:3px;height:${BD_CHART_H}px;width:100%;padding:0 4px">
             <div style="flex:1;position:relative;background:#60a0ff;border-radius:3px 3px 0 0;height:${h1}px;opacity:.85;min-width:8px" title="${esc(bd)} FY25-26: ${fmtS(v1)}">${lbl1}</div>
             <div style="flex:1;position:relative;background:var(--accent);border-radius:3px 3px 0 0;height:${h2}px;opacity:.95;min-width:8px" title="${esc(bd)} FY26-27: ${fmtS(v2)}">${lbl2}</div>

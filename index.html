@@ -1276,6 +1276,12 @@ function renderRevenue(){
   const new2526 = fy2526.filter(isNew), ex2526 = fy2526.filter(r=>!isNew(r));
   const new2627 = fy2627.filter(isNew), ex2627 = fy2627.filter(r=>!isNew(r));
 
+  // Unique client counts per FY (dedupe by normalized client name — norm() is
+  // the same matcher used for Client O/S elsewhere on the dashboard).
+  const uniqClients = rows => new Set(rows.map(r=>norm(r.client)).filter(Boolean)).size;
+  const uniqNew2526 = uniqClients(new2526), uniqEx2526 = uniqClients(ex2526);
+  const uniqNew2627 = uniqClients(new2627), uniqEx2627 = uniqClients(ex2627);
+
   // Current month
   const now = new Date();
   const thisM  = dealsRows.filter(r=>{ const d=new Date(parseDate(r.date));return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth(); });
@@ -1302,7 +1308,7 @@ function renderRevenue(){
         <div style="width:1px;height:36px;background:var(--border);margin:0 4px"></div>
         <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:3px">This Month</div><div style="font-size:18px;font-weight:800">${fmtS(sum(thisM))}</div><div style="font-size:10px;color:${momPct>=0?'var(--green)':'var(--red)'}">${momPct>=0?'▲':'▼'} ${Math.abs(momPct)}% MoM</div></div>
         <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:3px">Avg Deal 26-27</div><div style="font-size:18px;font-weight:800">${fmtS(avg2627)}</div><div style="font-size:10px;color:var(--muted)">was ${fmtS(avgAll)} all-time</div></div>
-        <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:3px">New (25-26 → 26-27)</div><div style="font-size:14px;font-weight:700;color:var(--green)">${new2526.length} → ${new2627.length} clients</div><div style="font-size:10px;color:var(--muted)">Existing: ${ex2526.length} → ${ex2627.length}</div></div>
+        <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:3px">New clients (25-26 → 26-27)</div><div style="font-size:14px;font-weight:700;color:var(--green)">${uniqNew2526} → ${uniqNew2627}</div><div style="font-size:10px;color:var(--muted)">workshops ${new2526.length} → ${new2627.length} · Existing clients ${uniqEx2526} → ${uniqEx2627} (workshops ${ex2526.length} → ${ex2627.length})</div></div>
       </div>`;
   }
 
@@ -1414,20 +1420,35 @@ function renderRevenue(){
   const bdMaxV = Math.max(...bdsWithRevenue.map(bd=>Math.max(
     sum(fy2526.filter(r=>r.bd===bd)), sum(fy2627.filter(r=>r.bd===bd))
   )), 1);
-  bdRevEl.innerHTML = bdsWithRevenue.map(bd=>{
-    const v1=sum(fy2526.filter(r=>r.bd===bd)), v2=sum(fy2627.filter(r=>r.bd===bd));
-    return `<div class="bar-row">
-      <div class="bar-lbl" title="${esc(bd)}">${esc(bd)}</div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:2px">
-        ${v1>0?`<div style="display:flex;align-items:center;gap:4px">
-          <div style="height:10px;background:#60a0ff;opacity:.75;border-radius:2px;width:${(v1/bdMaxV*100).toFixed(1)}%"></div>
-          <span style="font-size:10px;color:var(--muted)">25-26: ${fmtS(v1)}</span></div>`:''}
-        ${v2>0?`<div style="display:flex;align-items:center;gap:4px">
-          <div style="height:10px;background:var(--accent);opacity:.9;border-radius:2px;width:${(v2/bdMaxV*100).toFixed(1)}%"></div>
-          <span style="font-size:10px;color:var(--muted)">26-27: ${fmtS(v2)}</span></div>`:''}
-      </div>
+  // Nice round Y-axis max for the BD chart (same helper as the monthly chart)
+  const bdNiceMax = (() => {
+    const steps = [1000000,500000,250000,100000,50000,25000,10000];
+    for (const s of steps) { const v = Math.ceil(bdMaxV/s)*s; if (v/s <= 8) return v; }
+    return Math.ceil(bdMaxV/10000)*10000;
+  })();
+  const BD_CHART_H = 170; // px — bar drawing area height
+  bdRevEl.innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:4px">
+      ${bdsWithRevenue.map(bd=>{
+        const v1=sum(fy2526.filter(r=>r.bd===bd)), v2=sum(fy2627.filter(r=>r.bd===bd));
+        const h1=v1?Math.max(Math.round(v1/bdNiceMax*BD_CHART_H),4):0;
+        const h2=v2?Math.max(Math.round(v2/bdNiceMax*BD_CHART_H),4):0;
+        const lbl1=(v1>0&&h1>=18)?`<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:8px;font-weight:700;color:rgba(255,255,255,.95);line-height:1">${fmtY(v1)}</div>`:'';
+        const lbl2=(v2>0&&h2>=18)?`<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:8px;font-weight:700;color:rgba(20,20,20,.85);line-height:1">${fmtY(v2)}</div>`:'';
+        return `<div style="display:flex;flex-direction:column;align-items:center;flex:1 1 88px;min-width:64px;max-width:120px;padding:8px 5px 6px;background:var(--surf2);border-radius:6px">
+          <div style="display:flex;align-items:flex-end;gap:3px;height:${BD_CHART_H}px;width:100%;padding:0 4px">
+            <div style="flex:1;position:relative;background:#60a0ff;border-radius:3px 3px 0 0;height:${h1}px;opacity:.85;min-width:8px" title="${esc(bd)} FY25-26: ${fmtS(v1)}">${lbl1}</div>
+            <div style="flex:1;position:relative;background:var(--accent);border-radius:3px 3px 0 0;height:${h2}px;opacity:.95;min-width:8px" title="${esc(bd)} FY26-27: ${fmtS(v2)}">${lbl2}</div>
+          </div>
+          <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:5px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(bd)}">${esc(bd)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11px;color:var(--muted)">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#60a0ff;border-radius:2px;opacity:.85;display:inline-block"></span>FY 25-26</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--accent);border-radius:2px;display:inline-block"></span>FY 26-27</span>
+      <span style="font-size:10px;color:var(--muted)">Hover a bar for exact amounts</span>
     </div>`;
-  }).join('');
 
   // ── NEW vs EXISTING: FY25-26 and FY26-27 ──
   renderBarChart('newExistingChart', [

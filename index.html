@@ -334,8 +334,6 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--ac
 <!-- ══ STICKY SUMMARY BAR ══ -->
 <div id="summaryBar">
   <div class="cards-row">
-    <div class="s-card sc4" id="sc-new-clients"><div class="card-lbl">New Clients</div><div class="card-val" id="cNewClients">—</div><div class="card-sub" id="cNewClientsS"></div></div>
-    <div class="s-card sc10" id="sc-ex-clients"><div class="card-lbl">Existing Clients</div><div class="card-val" id="cExClients">—</div><div class="card-sub" id="cExClientsS"></div></div>
     <div class="s-card sc1" onclick="filterByCard('all')" id="sc-all"><div class="card-lbl">Outstanding</div><div class="card-val" id="cOut">—</div><div class="card-sub" id="cOutS"></div><div class="card-pct" id="cOutPct"></div></div>
     <div class="s-card sc2" onclick="filterByCard('ovd')" id="sc-ovd"><div class="card-lbl">Overdue</div><div class="card-val" id="cOvd">—</div><div class="card-sub" id="cOvdS"></div></div>
     <div class="s-card sc5" onclick="filterByCard('nd')"   id="sc-nd"  ><div class="card-lbl">Not Due</div><div class="card-val" id="cND">—</div><div class="card-sub" id="cNDS"></div></div>
@@ -1110,24 +1108,6 @@ function updateCards(){
   set('c3045',fmtS(sum(b3045)));set('c3045S',b3045.length+' inv');
   set('c45p',fmtS(sum(b45p))); set('c45pS',b45p.length+' inv');
   set('cSel',fmtS(selAmt));   set('cSelS',sel.length+' inv');
-  // Client count cards — New vs Existing per FY
-  if(dealsRows.length){
-    const fy2526Start=new Date(2025,3,1),fy2526End=new Date(2026,2,31,23,59,59);
-    const fy2627Start=new Date(2026,3,1),fy2627End=new Date(2027,2,31,23,59,59);
-    const inFY = (r,start,end) => {const d=new Date(parseDate(r.date));return d>=start&&d<=end;};
-    const fy2526 = dealsRows.filter(r=>inFY(r,fy2526Start,fy2526End));
-    const fy2627 = dealsRows.filter(r=>inFY(r,fy2627Start,fy2627End));
-    const isNew = r => r.type && r.type.toLowerCase().includes('new');
-    const new2526 = fy2526.filter(isNew), ex2526 = fy2526.filter(r=>!isNew(r));
-    const new2627 = fy2627.filter(isNew), ex2627 = fy2627.filter(r=>!isNew(r));
-    const uniq = rows => new Set(rows.map(r=>norm(r.client)).filter(Boolean)).size;
-    const nNew2526 = uniq(new2526), nEx2526 = uniq(ex2526);
-    const nNew2627 = uniq(new2627), nEx2627 = uniq(ex2627);
-    set('cNewClients', nNew2526+' → '+nNew2627);
-    set('cNewClientsS', 'workshops '+new2526.length+' → '+new2627.length);
-    set('cExClients', nEx2526+' → '+nEx2627);
-    set('cExClientsS', 'workshops '+ex2526.length+' → '+ex2627.length);
-  }
   set('sCount',sel.length); set('sAmt',fmtS(selAmt));
   document.getElementById('selBar').classList.toggle('on',sel.length>0);
   document.getElementById('batchBtn').style.display=sel.length>0?'inline-flex':'none';
